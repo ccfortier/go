@@ -18,14 +18,15 @@ const (
 func main() {
 	var input string
 	for {
-		time.Sleep(10)
 		fmt.Print("Enter text: ")
 		fmt.Scanln(&input)
 
 		switch input {
 		case "listen":
+			fmt.Printf("Listening on %s\n", defaultMulticastAddress)
 			go listenMulticast()
 		case "ping":
+			fmt.Printf("Broadcasting to %s\n", defaultMulticastAddress)
 			go pingMulticast(defaultMulticastAddress)
 		case "bye":
 			fmt.Println("bye...")
@@ -38,7 +39,6 @@ func main() {
 }
 
 func listenMulticast() {
-	fmt.Printf("Listening on %s\n", defaultMulticastAddress)
 	multicast.Listen(defaultMulticastAddress, msgHandler)
 }
 
