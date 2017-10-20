@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultMulticastAddress = "224.0.0.100:9999"
+	defaultMulticastAddress = "224.0.0.1:9999"
 )
 
 
