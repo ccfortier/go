@@ -25,6 +25,8 @@ func main() {
 		switch input {
 		case "listen":
 			go listenMulticast()
+		case "ping":
+			go pingMulticast(defaultMulticastAddress)
 		case "bye":
 			fmt.Println("bye...")
 			os.Exit(0)
@@ -43,4 +45,16 @@ func listenMulticast() {
 func msgHandler(src *net.UDPAddr, n int, b []byte) {
 	log.Println(n, "bytes read from", src)
 	log.Println(hex.Dump(b[:n]))
+}
+
+func pingMulticast(addr string) {
+	conn, err := multicast.NewBroadcaster(addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for {
+		conn.Write([]byte("hello, world\n"))
+		time.Sleep(1 * time.Second)
+	}
 }
