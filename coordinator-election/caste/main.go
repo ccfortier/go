@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/dmichael/go-multicast/multicast"
+	"github.com/ccfortier/go/coordinator-election/caste/multicast"
 )
 
 const (
@@ -44,7 +44,7 @@ func msgHandler(src *net.UDPAddr, n int, b []byte) {
 }
 
 func sendMulticast(addr string) {
-	conn, err := multicast.NewBroadcaster(addr)
+	conn, err := multicast.NewSender(addr)
 	if err != nil {
 		log.Fatal(err)
 	}
