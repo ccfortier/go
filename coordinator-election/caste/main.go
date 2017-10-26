@@ -2,18 +2,16 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"github.com/dmichael/go-multicast/multicast"
-	"net"
 	"log"
-	"encoding/hex"
-	"time"
+	"net"
+	"os"
+
+	"github.com/dmichael/go-multicast/multicast"
 )
 
 const (
 	defaultMulticastAddress = "239.0.0.0:9999"
 )
-
 
 func main() {
 	var input string
@@ -22,12 +20,11 @@ func main() {
 		fmt.Scanln(&input)
 
 		switch input {
-		case "listen":
-			fmt.Printf("Listening on %s\n", defaultMulticastAddress)
+		case "lm":
+			fmt.Printf("Listening mcast on %s\n", defaultMulticastAddress)
 			go listenMulticast()
-		case "ping":
-			fmt.Printf("Broadcasting to %s\n", defaultMulticastAddress)
-			go pingMulticast(defaultMulticastAddress)
+		case "sm":
+			go sendMulticast(defaultMulticastAddress)
 		case "bye":
 			fmt.Println("bye...")
 			os.Exit(0)
@@ -43,18 +40,15 @@ func listenMulticast() {
 }
 
 func msgHandler(src *net.UDPAddr, n int, b []byte) {
-	log.Println(n, "bytes read from", src)
-	log.Println(hex.Dump(b[:n]))
+	fmt.Println(string(b[:n]) + " from " + src.String())
 }
 
-func pingMulticast(addr string) {
+func sendMulticast(addr string) {
 	conn, err := multicast.NewBroadcaster(addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for {
-		conn.Write([]byte("hello, world\n"))
-		time.Sleep(1 * time.Second)
-	}
+	conn.Write([]byte("sm"))
+
 }
