@@ -9,9 +9,9 @@ const (
 	maxDatagramSize = 8192
 )
 
-// Listen binds to the UDP address and port given and writes packets received
+// Listen binds to the TCP address and port given and writes packets received
 // from that address to a buffer which is passed to a hander
-func Listen(address string, handler func(*net.TCPAddr, int, []byte)) {
+func Listen(address string, handler func(int, []byte)) {
 	// Parse the string address
 	addr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
@@ -30,25 +30,24 @@ func Listen(address string, handler func(*net.TCPAddr, int, []byte)) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		conn.SetReadBuffer(maxDatagramSize)
 		buffer := make([]byte, maxDatagramSize)
-		numBytes, src, err := conn.Read(buffer)
+		numBytes, err := conn.Read(buffer)
 		if err != nil {
 			log.Fatal("ReadFromTCP failed:", err)
 		}
 
-		handler(src, numBytes, buffer)
+		handler(numBytes, buffer)
 	}
 }
 
 // NewSender creates a new TCP connection on which to send msg
-func NewSender(address string) (*net.UDPConn, error) {
-	addr, err := net.ResolveUDPAddr("udp", address)
+func NewSender(address string) (*net.TCPConn, error) {
+	addr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := net.DialTCP("tcp", nil, addr)
 	if err != nil {
 		return nil, err
 	}
