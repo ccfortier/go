@@ -1,6 +1,7 @@
 package caste
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -11,7 +12,7 @@ const (
 	defaultMulticastAddress = "239.0.0.0"
 	defaultUnicastAddress   = "0.0.0.0"
 	defaultUnicastPort      = "10000"
-	defaultNetwork          = "172.17.0."
+	defaultNetwork          = "172.17.0"
 	maxDatagramSize         = 8192
 )
 
@@ -32,18 +33,18 @@ func (cp CasteProcess) Start() {
 }
 
 func startAsCoordinator(cp *CasteProcess) {
-	log.Printf("Process %d started as coordinator. Waiting for requests...", cp.PId)
+	log.Printf("Process %d started as coordinator. Waiting for requestsss...", cp.Coordinator)
 	listen()
 }
 
 func startAsNormal(cp *CasteProcess) {
-	log.Printf("Process %d started as normal. Waiting for requests...", cp.PId)
+	ip := fmt.Sprintf("%s.%d:%s", defaultNetwork, cp.Coordinator, defaultUnicastPort)
+	log.Printf("Process %d started as normal. Looking for coordinator at %s", cp.PId, ip)
 	for {
-		ip := defaultNetwork + string(cp.Coordinator) + ":" + defaultUnicastPort
 		if !checkProcess(ip) {
 			log.Println("Coordinator is down!")
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
