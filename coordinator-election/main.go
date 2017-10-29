@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/ccfortier/go/coordinator-election/caste"
@@ -20,7 +19,8 @@ const (
 )
 
 var (
-	pCaste = caste.CasteProcess{}
+	pCaste  = caste.CasteProcess{}
+	admPort *int
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -29,12 +29,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if webinput != nil {
 		switch webinput[0] {
 		case "lm":
-			log.Printf("Listening mcast on %s\n", defaultMulticastAddress)
+			log.Printf("<C.E.Daemon> listening mcast on %s\n", defaultMulticastAddress)
 			go listenMulticast()
 		case "sm":
 			go sendMulticast(defaultMulticastAddress)
 		case "lu":
-			log.Printf("Listening ucast on %s\n", defaultUnicastAddress)
+			log.Printf("<C.E.Daemon> listening ucast on %s\n", defaultUnicastAddress)
 			go listenUnicast()
 		case "su":
 			if ip != nil {
@@ -47,22 +47,21 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			pCaste.Coordinator, _ = strconv.Atoi(r.URL.Query().Get("Coordinator"))
 			pCaste.SingleIP, _ = strconv.Atoi(r.URL.Query().Get("SingleIP"))
 			pCaste.Start()
-		case "casteCoordinator":
+		case "casteCheckCoordinator":
 			pCaste.CheckCoordinator()
 		case "stop":
-			log.Println("bye...")
-			os.Exit(0)
+			log.Fatalf("<C.E.Daemon> stopped on port %d...\n", *admPort)
 		default:
-			log.Printf("Command not recognized %s!\n", r.URL.Query().Get("cmd"))
+			log.Printf("<C.E.Daemon> command not recognized %s!\n", r.URL.Query().Get("cmd"))
 		}
 	}
 }
 
 func main() {
 	http.HandleFunc("/", handler)
-	admPort := flag.Int("admPort", 8080, "Defines http adm port.")
+	admPort = flag.Int("admPort", 8080, "Defines http adm port.")
 	flag.Parse()
-	log.Printf("Waiting commands on port %d..\n", *admPort)
+	log.Printf("<C.E.Daemon> waiting commands on port %d...\n", *admPort)
 	http.ListenAndServe(fmt.Sprintf(":%d", *admPort), nil)
 }
 

@@ -28,25 +28,25 @@ func (cp CasteProcess) Start() {
 	if cp.Coordinator == cp.PId {
 		go startAsCoordinator(&cp)
 	} else {
-		go startAsNormal(&cp)
+		go startAsWorker(&cp)
 	}
 }
 
 func (cp CasteProcess) CheckCoordinator() {
 	ip := coordinatorIP(&cp)
-	if !checkProcess(ip, cp.PId) {
-		log.Println("Coordinator is down!")
+	if !checkProcess(&cp, ip) {
+		log.Printf("(P:%d) Coordinator [P:%d] is down!\n", cp.PId, cp.Coordinator)
 	}
 }
 
 func startAsCoordinator(cp *CasteProcess) {
 	ip := processIP(cp)
-	log.Printf("Process %d started as coordinator. Waiting for requests at %s...", cp.PId, ip)
-	listen(ip)
+	log.Printf("(P:%d) started as coordinator. Waiting for requests at %s...", cp.PId, ip)
+	listen(cp, ip)
 }
 
-func startAsNormal(cp *CasteProcess) {
-	log.Printf("Process %d started as normal. Looking for coordinator at %s", cp.PId, coordinatorIP(cp))
+func startAsWorker(cp *CasteProcess) {
+	log.Printf("(P:%d) started as worker. Looking for coordinator at %s", cp.PId, coordinatorIP(cp))
 	cp.CheckCoordinator()
 }
 
@@ -66,35 +66,35 @@ func coordinatorIP(cp *CasteProcess) string {
 	}
 }
 
-func listen(addr string) {
+func listen(cp *CasteProcess, addr string) {
 
-	unicast.Listen(addr, msgHandlerOK)
+	unicast.Listen(addr, cp.msgHandlerOK)
 }
 
-func msgHandlerOK(n int, b []byte, addr string) []byte {
-	log.Printf("Message received from %s: %s\n", addr, string(b[:n]))
+func (cp CasteProcess) msgHandlerOK(n int, b []byte, addr string) []byte {
+	log.Printf("(P:%d) Message received from %s: %s\n", cp.PId, addr, string(b[:n]))
 	return []byte("ok")
 }
 
-func checkProcess(addr string, pID int) bool {
+func checkProcess(cp *CasteProcess, addr string) bool {
 	conn, err := unicast.NewSender(addr)
 	if err != nil {
-		log.Printf("%s, when try ucast for %s.\n", err, addr)
+		log.Printf("(P:%d) %s, when try ucast for %d at %s.\n", cp.PId, err, cp.Coordinator, addr)
 		return false
 	} else {
 		defer conn.Close()
 
-		conn.Write([]byte(fmt.Sprintf("[Process:%d] Are you ok?", pID)))
+		conn.Write([]byte(fmt.Sprintf("[P:%d] Are you ok?", cp.PId)))
 
 		buffer := make([]byte, maxDatagramSize)
 		n, err := conn.Read(buffer)
 		if err != nil {
-			log.Println("ReadFromTCP failed to colect response:", err)
+			log.Printf("(P:%d) ReadFromTCP failed to colect response: %s", err)
 			return false
 		}
 
 		response := fmt.Sprintf("%s", buffer[:n])
-		log.Printf("Response from coordinator: %s", response)
+		log.Printf("(P:%d) Response from coordinator [P:%d]: %s", cp.PId, cp.Coordinator, response)
 		return response == "ok"
 	}
 }
