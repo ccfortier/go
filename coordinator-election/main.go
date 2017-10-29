@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -39,12 +41,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				go sendUnicast(ip[0])
 			}
 		case "caste":
-			//pCaste.PId, _ = strconv.Atoi(r.URL.Query()["PId"][0])
 			pCaste.PId, _ = strconv.Atoi(r.URL.Query().Get("PId"))
-			//pCaste.CId, _ = strconv.Atoi(r.URL.Query()["CId"][0])
-			//pCaste.HCId, _ = strconv.Atoi(r.URL.Query()["HCId"][0])
+			pCaste.CId, _ = strconv.Atoi(r.URL.Query().Get("CId"))
+			pCaste.HCId, _ = strconv.Atoi(r.URL.Query().Get("HCId"))
 			pCaste.Coordinator, _ = strconv.Atoi(r.URL.Query().Get("Coordinator"))
+			pCaste.SingleIP, _ = strconv.Atoi(r.URL.Query().Get("SingleIP"))
 			pCaste.Start()
+		case "casteCoordinator":
+			pCaste.CheckCoordinator()
 		case "stop":
 			log.Println("bye...")
 			os.Exit(0)
@@ -55,9 +59,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	log.Println("Waiting commands...")
 	http.HandleFunc("/", handler)
-	http.ListenAndServe(":8080", nil)
+	admPort := flag.Int("admPort", 8080, "Defines http adm port.")
+	flag.Parse()
+	log.Printf("Waiting commands on port %d..\n", *admPort)
+	http.ListenAndServe(fmt.Sprintf(":%d", *admPort), nil)
 }
 
 func listenMulticast() {
@@ -81,8 +87,8 @@ func listenUnicast() {
 	unicast.Listen(defaultUnicastAddress, msgHandlerTCP)
 }
 
-func msgHandlerTCP(n int, b []byte) []byte {
-	log.Println(string(b[:n]))
+func msgHandlerTCP(n int, b []byte, addr string) []byte {
+	log.Printf("Message received from %s: %s\n", addr, string(b[:n]))
 	return []byte("msg received")
 }
 
