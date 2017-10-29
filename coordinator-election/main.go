@@ -39,10 +39,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				go sendUnicast(ip[0])
 			}
 		case "caste":
-			pCaste.PId, _ = strconv.Atoi(r.URL.Query()["PId"][0])
+			//pCaste.PId, _ = strconv.Atoi(r.URL.Query()["PId"][0])
+			pCaste.PId, _ = strconv.Atoi(r.URL.Query().Get("PId"))
 			//pCaste.CId, _ = strconv.Atoi(r.URL.Query()["CId"][0])
 			//pCaste.HCId, _ = strconv.Atoi(r.URL.Query()["HCId"][0])
-			pCaste.Coordinator, _ = strconv.Atoi(r.URL.Query()["Coordinator"][0])
+			pCaste.Coordinator, _ = strconv.Atoi(r.URL.Query().Get("Coordinator"))
 			pCaste.Start()
 		case "stop":
 			log.Println("bye...")
@@ -80,9 +81,9 @@ func listenUnicast() {
 	unicast.Listen(defaultUnicastAddress, msgHandlerTCP)
 }
 
-func msgHandlerTCP(n int, b []byte) string {
+func msgHandlerTCP(n int, b []byte) []byte {
 	log.Println(string(b[:n]))
-	return "msg received"
+	return []byte("msg received")
 }
 
 func sendUnicast(addr string) {

@@ -33,7 +33,7 @@ func (cp CasteProcess) Start() {
 }
 
 func startAsCoordinator(cp *CasteProcess) {
-	log.Printf("Process %d started as coordinator. Waiting for requestsss...", cp.Coordinator)
+	log.Printf("Process %d started as coordinator. Waiting for requests...", cp.PId)
 	listen()
 }
 
@@ -52,9 +52,9 @@ func listen() {
 	unicast.Listen(defaultUnicastAddress+":"+defaultUnicastPort, msgHandlerOK)
 }
 
-func msgHandlerOK(n int, b []byte) string {
+func msgHandlerOK(n int, b []byte) []byte {
 	log.Println(string(b[:n]))
-	return "ok"
+	return []byte("ok")
 }
 
 func checkProcess(addr string) bool {
@@ -68,12 +68,12 @@ func checkProcess(addr string) bool {
 		conn.Write([]byte("Are you ok?"))
 
 		buffer := make([]byte, maxDatagramSize)
-		_, err := conn.Read(buffer)
+		response, err := conn.Read(buffer)
 		if err != nil {
 			log.Println("ReadFromTCP failed to colect response:", err)
 			return false
 		}
 
-		return true
+		return string(response) == "ok"
 	}
 }
