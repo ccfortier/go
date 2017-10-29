@@ -11,7 +11,7 @@ const (
 
 // Listen binds to the TCP address and port given and writes packets received
 // from that address to a buffer which is passed to a hander
-func Listen(address string, handler func(int, []byte)) {
+func Listen(address string, handler func(int, []byte) string) {
 	// Parse the string address
 	addr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
@@ -33,10 +33,10 @@ func Listen(address string, handler func(int, []byte)) {
 		buffer := make([]byte, maxDatagramSize)
 		numBytes, err := conn.Read(buffer)
 		if err != nil {
-			log.Fatal("ReadFromTCP failed:", err)
+			log.Println("ReadFromTCP failed:", err)
 		}
 
-		handler(numBytes, buffer)
+		log.Println(handler(numBytes, buffer))
 	}
 }
 
@@ -53,5 +53,4 @@ func NewSender(address string) (*net.TCPConn, error) {
 	}
 
 	return conn, nil
-
 }
