@@ -9,9 +9,16 @@ const (
 	maxDatagramSize = 8192
 )
 
+func SendResponse(conn *net.UDPConn, addr *net.UDPAddr, msg []byte) {
+	_, err := conn.WriteToUDP(msg, addr)
+	if err != nil {
+		log.Printf("Couldn't send response %v", err)
+	}
+}
+
 // Listen binds to the UDP address and port given and writes packets received
 // from that address to a buffer which is passed to a hander
-func Listen(address string, handler func(*net.UDPAddr, int, []byte)) {
+func Listen(address string, handler func(*net.UDPAddr, int, []byte) []byte) {
 	// Parse the string address
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
@@ -34,7 +41,7 @@ func Listen(address string, handler func(*net.UDPAddr, int, []byte)) {
 			log.Fatal("ReadFromUDP failed:", err)
 		}
 
-		handler(src, numBytes, buffer)
+		SendResponse(conn, src, handler(src, numBytes, buffer))
 	}
 }
 
