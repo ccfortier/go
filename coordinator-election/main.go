@@ -47,6 +47,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			pCaste.Coordinator, _ = strconv.Atoi(r.URL.Query().Get("Coordinator"))
 			pCaste.SingleIP, _ = strconv.Atoi(r.URL.Query().Get("SingleIP"))
 			pCaste.Start()
+		case "casteDump":
+			pCaste.Dump()
 		case "casteCheckCoordinator":
 			pCaste.CheckCoordinator()
 		case "stop":

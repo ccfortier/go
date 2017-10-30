@@ -10,7 +10,7 @@ import (
 const (
 	defaultMulticastAddress = "239.0.0.0"
 	defaultUnicastAddress   = "0.0.0.0"
-	defaultUnicastPort      = 10000
+	defaultCoordinatorPort  = 10000
 	defaultNetwork          = "172.17.0"
 	maxDatagramSize         = 8192
 )
@@ -33,14 +33,22 @@ func (cp CasteProcess) Start() {
 }
 
 func (cp CasteProcess) CheckCoordinator() {
+	if cp.OnElection {
+		log.Printf("(P:%d) Can't check coordinator. On election!\n", cp.PId, cp.Coordinator)
+		return
+	}
 	ip := coordinatorIP(&cp)
 	if !checkProcess(&cp, ip) {
 		log.Printf("(P:%d) Coordinator [P:%d] is down!\n", cp.PId, cp.Coordinator)
 	}
 }
 
+func (cp CasteProcess) Dump() {
+	log.Printf("(P:%d) Dump: %+v\n", cp.PId, cp)
+}
+
 func startAsCoordinator(cp *CasteProcess) {
-	ip := processIP(cp)
+	ip := coordinatorIP(cp)
 	log.Printf("(P:%d) started as coordinator. Waiting for requests at %s...", cp.PId, ip)
 	listen(cp, ip)
 }
@@ -50,19 +58,11 @@ func startAsWorker(cp *CasteProcess) {
 	cp.CheckCoordinator()
 }
 
-func processIP(cp *CasteProcess) string {
-	if cp.SingleIP == 0 {
-		return fmt.Sprintf("%s.%d:%d", defaultNetwork, cp.PId, defaultUnicastPort)
-	} else {
-		return fmt.Sprintf("%s.%d:%d", defaultNetwork, cp.SingleIP, defaultUnicastPort+cp.PId)
-	}
-}
-
 func coordinatorIP(cp *CasteProcess) string {
 	if cp.SingleIP == 0 {
-		return fmt.Sprintf("%s.%d:%d", defaultNetwork, cp.Coordinator, defaultUnicastPort)
+		return fmt.Sprintf("%s.%d:%d", defaultNetwork, cp.Coordinator, defaultCoordinatorPort)
 	} else {
-		return fmt.Sprintf("%s.%d:%d", defaultNetwork, cp.SingleIP, defaultUnicastPort+cp.Coordinator)
+		return fmt.Sprintf("%s.%d:%d", defaultNetwork, cp.SingleIP, defaultCoordinatorPort+cp.Coordinator)
 	}
 }
 
@@ -79,7 +79,7 @@ func (cp CasteProcess) msgHandlerOK(n int, b []byte, addr string) []byte {
 func checkProcess(cp *CasteProcess, addr string) bool {
 	conn, err := unicast.NewSender(addr)
 	if err != nil {
-		log.Printf("(P:%d) %s, when try ucast for %d at %s.\n", cp.PId, err, cp.Coordinator, addr)
+		//log.Printf("(P:%d) %s, when try ucast for %d at %s.\n", cp.PId, err, cp.Coordinator, addr)
 		return false
 	} else {
 		defer conn.Close()
@@ -89,7 +89,7 @@ func checkProcess(cp *CasteProcess, addr string) bool {
 		buffer := make([]byte, maxDatagramSize)
 		n, err := conn.Read(buffer)
 		if err != nil {
-			log.Printf("(P:%d) ReadFromTCP failed to colect response: %s", err)
+			//log.Printf("(P:%d) ReadFromTCP failed to colect response: %s", err)
 			return false
 		}
 
