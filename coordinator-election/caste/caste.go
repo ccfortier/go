@@ -15,8 +15,7 @@ const (
 	defaultUnicastIP       = "0.0.0.0"
 	defaultCoordinatorPort = 10000
 	defaultNetwork         = "172.17.0"
-	//defaultBroadcastAddres = "172.17.255.255:9000"
-	maxDatagramSize = 8192
+	maxDatagramSize        = 8192
 )
 
 type CasteProcess struct {
@@ -29,16 +28,28 @@ type CasteProcess struct {
 }
 
 func (cp CasteProcess) Start() {
-	joinCaste(&cp)
 	if cp.Coordinator == cp.PId {
 		startAsCoordinator(&cp)
 	} else {
 		startAsWorker(&cp)
 	}
+	joinCaste(&cp)
 }
 
 func (cp CasteProcess) Dump() {
 	log.Printf("(P:%d) Dump: %+v\n", cp.PId, cp)
+}
+
+func (cp CasteProcess) Encode() string {
+	return fmt.Sprintf("%v", cp)
+}
+
+func (cp CasteProcess) Decode(cpEncoded string) {
+	fmt.Sscanf(cpEncoded[:len(cpEncoded)-1], "{%d %d %d %d %t %d}", &cp.PId, &cp.CId, &cp.HCId, &cp.Coordinator, &cp.OnElection, &cp.SingleIP)
+}
+
+func (cp CasteProcess) CasteMsg(msg string) *CasteMsg {
+	return &CasteMsg{cp.PId, cp.CId, msg}
 }
 
 func (cp CasteProcess) CheckCoordinator() {
@@ -47,9 +58,10 @@ func (cp CasteProcess) CheckCoordinator() {
 		return
 	}
 	ip := coordinatorAddress(&cp)
-	if !unicastSendMessage(&cp, ip, "Are you ok?") {
+	_, err := unicastSendMessage(&cp, ip, cp.CasteMsg("AreYouOk?"))
+	if err != nil {
 		log.Printf("(P:%d) Coordinator [P:%d] is down!\n", cp.PId, cp.Coordinator)
-		cp.BecomeCoordinator()
+		cp.StartElection()
 	}
 }
 
@@ -67,20 +79,20 @@ func (cp CasteProcess) BecomeCoordinator() {
 
 func startAsCoordinator(cp *CasteProcess) {
 	ip := coordinatorAddress(cp)
-	log.Printf("(P:%d) Listen broadcast at %s...\n", cp.PId, broadcastAddress())
-	go broadcastListen(cp)
 	log.Printf("(P:%d) Started as coordinator. Waiting for requests at %s...\n", cp.PId, ip)
 	go unicastListen(cp, ip)
+	log.Printf("(P:%d) Listen broadcast at %s...\n", cp.PId, broadcastAddress())
+	go broadcastListen(cp)
 }
 
 func startAsWorker(cp *CasteProcess) {
+	log.Printf("(P:%d) Started as worker. Looking for coordinator at %s\n", cp.PId, coordinatorAddress(cp))
 	log.Printf("(P:%d) Listen broadcast at %s...\n", cp.PId, broadcastAddress())
 	go broadcastListen(cp)
-	log.Printf("(P:%d) Started as worker. Looking for coordinator at %s\n", cp.PId, coordinatorAddress(cp))
 }
 
 func joinCaste(cp *CasteProcess) {
-	log.Printf("(P:%d) Joined caste %d. listen multicast at %s\n", cp.PId, cp.CId, casteAddress(cp))
+	log.Printf("(P:%d) Joined caste %d. listen multicast at %s...\n", cp.PId, cp.CId, casteAddress(cp))
 	go multicastListen(cp)
 }
 
@@ -106,30 +118,30 @@ func unicastListen(cp *CasteProcess, addr string) {
 }
 
 func (cp CasteProcess) unicastMsgHandlerOK(n int, b []byte, addr string) []byte {
-	log.Printf("(P:%d) Message received from %s: %s\n", cp.PId, addr, string(b[:n]))
-	return []byte("ok")
+	msg := CasteMsg{}
+	msg.Decode(string(b[:n]))
+	log.Printf("(P:%d) Message received from [P:%d] at %s: %s\n", cp.PId, msg.PId, addr, msg.Text)
+	return []byte(cp.CasteMsg("ok").Encode())
 }
 
-func unicastSendMessage(cp *CasteProcess, addr string, msg string) bool {
+func unicastSendMessage(cp *CasteProcess, addr string, msg *CasteMsg) (*CasteMsg, error) {
 	conn, err := unicast.NewSender(addr)
 	if err != nil {
-		//log.Printf("(P:%d) %s, when try ucast for %d at %s.\n", cp.PId, err, cp.Coordinator, addr)
-		return false
+		return nil, err
 	} else {
 		defer conn.Close()
-
-		conn.Write([]byte(fmt.Sprintf("[P:%d] %s", cp.PId, msg)))
+		conn.Write([]byte(msg.Encode()))
 
 		buffer := make([]byte, maxDatagramSize)
 		n, err := conn.Read(buffer)
 		if err != nil {
-			//log.Printf("(P:%d) ReadFromTCP failed to colect response: %s", err)
-			return false
+			return nil, fmt.Errorf("(P:%d) ReadFromTCP failed to colect response: %s", cp.PId, err)
 		}
 
-		response := fmt.Sprintf("%s", buffer[:n])
-		log.Printf("(P:%d) Response from coordinator [P:%d]: %s", cp.PId, cp.Coordinator, response)
-		return response == "ok"
+		response := CasteMsg{}
+		response.Decode(string(buffer[:n]))
+		log.Printf("(P:%d) Response from coordinator [P:%d]: %s", cp.PId, cp.Coordinator, response.Text)
+		return &response, nil
 	}
 }
 
