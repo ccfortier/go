@@ -35,7 +35,6 @@ func Listen(listener *net.TCPListener, handler func(int, []byte, string) []byte,
 		handled := handler(numBytes, buffer, conn.RemoteAddr().String())
 		conn.Write(handled)
 	}
-	log.Printf("(P:%s) Stopping listening at %s", "000", listener.Addr().String())
 }
 
 // NewListener creates a new TCP listener

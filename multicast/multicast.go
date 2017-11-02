@@ -11,7 +11,7 @@ const (
 
 // Listen binds to the UDP address and port given and writes packets received
 // from that address to a buffer which is passed to a hander
-func Listen(conn *net.UDPConn, handler func(*net.UDPAddr, int, []byte) []byte, stop chan bool) {
+func Listen(conn *net.UDPConn, handler func(*net.UDPAddr, int, []byte), stop chan bool) {
 	conn.SetReadBuffer(maxDatagramSize)
 	// Loop forever reading from the socket
 	for {
@@ -33,7 +33,6 @@ func Listen(conn *net.UDPConn, handler func(*net.UDPAddr, int, []byte) []byte, s
 		}
 
 	}
-	log.Printf("(P:%s) Stopping listening at %s", "000", conn.LocalAddr().String())
 }
 
 func NewListener(address string) (*net.UDPConn, error) {

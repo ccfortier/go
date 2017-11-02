@@ -2,7 +2,7 @@
 clear
 echo "building coordinator election daemon..."
 go build  
-echo "<<< first use case >>"
+echo "<<< second use case >>"
 echo ""
 echo "starting daemons..."
 coordinator-election -admPort=8001 &
@@ -24,15 +24,11 @@ echo ""
 echo "running simulation"
 curl "http://localhost:8002?cmd=casteCheckCoordinator"
 curl -s "http://localhost:8001?cmd=stop"
-curl "http://localhost:8002?cmd=casteCheckCoordinator"
 curl "http://localhost:8003?cmd=casteCheckCoordinator"
-curl -s "http://localhost:8002?cmd=stop"
-curl "http://localhost:8003?cmd=casteCheckCoordinator"
-curl "http://localhost:8004?cmd=casteCheckCoordinator"
 sleep 0.1
-curl "http://localhost:8004?cmd=casteCheckCoordinator"
 echo ""
 echo "stopping daemons"
+curl -s "http://localhost:8002?cmd=stop"
 curl -s "http://localhost:8003?cmd=stop"
 curl -s "http://localhost:8004?cmd=stop"
 curl -s "http://localhost:8005?cmd=stop"
