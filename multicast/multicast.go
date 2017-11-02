@@ -9,40 +9,46 @@ const (
 	maxDatagramSize = 8192
 )
 
-func SendResponse(conn *net.UDPConn, addr *net.UDPAddr, msg []byte) {
-	_, err := conn.WriteToUDP(msg, addr)
-	if err != nil {
-		log.Printf("Couldn't send response %v", err)
-	}
-}
-
 // Listen binds to the UDP address and port given and writes packets received
 // from that address to a buffer which is passed to a hander
-func Listen(address string, handler func(*net.UDPAddr, int, []byte) []byte) {
-	// Parse the string address
-	addr, err := net.ResolveUDPAddr("udp", address)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Open up a connection
-	conn, err := net.ListenMulticastUDP("udp", nil, addr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func Listen(conn *net.UDPConn, handler func(*net.UDPAddr, int, []byte) []byte, stop chan bool) {
 	conn.SetReadBuffer(maxDatagramSize)
-
 	// Loop forever reading from the socket
 	for {
 		buffer := make([]byte, maxDatagramSize)
 		numBytes, src, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			log.Fatal("ReadFromUDP failed:", err)
+			stopNow := false
+			select {
+			case stopNow = <-stop:
+			default:
+				stopNow = false
+			}
+			if stopNow {
+				break
+			}
+			log.Println("ReadFromUDP failed: ", err)
+		} else {
+			handler(src, numBytes, buffer)
 		}
 
-		SendResponse(conn, src, handler(src, numBytes, buffer))
 	}
+	log.Printf("(P:%s) Stopping listening at %s", "000", conn.LocalAddr().String())
+}
+
+func NewListener(address string) (*net.UDPConn, error) {
+	// Parse the string address
+	addr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return nil, err
+	}
+
+	// Open up a connection
+	conn, err := net.ListenMulticastUDP("udp", nil, addr)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 // NewSender creates a new UDP multicast connection on which to send msg

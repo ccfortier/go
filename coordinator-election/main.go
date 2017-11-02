@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 
@@ -16,8 +17,10 @@ const (
 )
 
 var (
-	pCaste  = caste.CasteProcess{}
-	admPort *int
+	pCaste          = caste.CasteProcess{}
+	admPort         *int
+	stopChanel      chan bool
+	unicastListener *net.TCPListener
 )
 
 func casteCreate(r *http.Request) {
@@ -26,6 +29,7 @@ func casteCreate(r *http.Request) {
 	pCaste.HCId, _ = strconv.Atoi(r.URL.Query().Get("HCId"))
 	pCaste.Coordinator, _ = strconv.Atoi(r.URL.Query().Get("Coordinator"))
 	pCaste.SingleIP, _ = strconv.Atoi(r.URL.Query().Get("SingleIP"))
+	pCaste.StopChanel = make(chan bool, 1)
 	log.Printf("(P:%d) Created\n", pCaste.PId)
 }
 
@@ -36,13 +40,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		case "caste":
 			casteCreate(r)
 			pCaste.Dump()
-			pCaste.Start()
+			pCaste.UnicastListener, pCaste.MulticastListener, pCaste.BroadcastListener = pCaste.Start()
 		case "casteCreate":
 			casteCreate(r)
 		case "casteStart":
 			pCaste.Start()
 		case "casteDump":
 			pCaste.Dump()
+		case "casteStopListen":
+			pCaste.StopListen()
 		case "casteCheckCoordinator":
 			pCaste.CheckCoordinator()
 		case "stop":
