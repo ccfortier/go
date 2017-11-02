@@ -36,24 +36,24 @@ type CasteProcess struct {
 }
 
 func (cp *CasteProcess) Start() (*net.TCPListener, *net.UDPConn, *net.UDPConn) {
-	var startAs string
-	if cp.Coordinator == cp.PId {
-		startAs = "COORDINATOR"
-	} else {
-		startAs = "WORKER"
-	}
-	ip := processAddress(cp.SingleIP, cp.PId)
-	log.Printf("(P:%d) Started as %s. Waiting for requests at %s...\n", cp.PId, startAs, ip)
+	//	var startAs string
+	//	if cp.Coordinator == cp.PId {
+	//		startAs = "COORDINATOR"
+	//	} else {
+	//		startAs = "WORKER"
+	//	}
+	//	ip := processAddress(cp.SingleIP, cp.PId)
+	//log.Printf("(P:%d) Started as %s. Waiting for requests at %s...\n", cp.PId, startAs, ip)
 	unicastListen(cp)
-	log.Printf("(P:%d) Joined caste %d. listen multicast at %s...\n", cp.PId, cp.CId, casteAddress(cp.CId))
+	//log.Printf("(P:%d) Joined caste %d. listen multicast at %s...\n", cp.PId, cp.CId, casteAddress(cp.CId))
 	multicastListen(cp)
-	log.Printf("(P:%d) Listen broadcast at %s...\n", cp.PId, broadcastAddress())
+	//log.Printf("(P:%d) Listen broadcast at %s...\n", cp.PId, broadcastAddress())
 	broadcastListen(cp)
 	return cp.UnicastListener, cp.MulticastListener, cp.BroadcastListener
 }
 
 func (cp *CasteProcess) Dump() {
-	log.Printf("(P:%d) Dump: {PId=%d CId=%d HCId=%d Coordinator=%d Status=%s}", cp.PId, cp.PId, cp.CId, cp.HCId, cp.Coordinator, cp.Status)
+	log.Printf("(P:%d) {PId=%d CId=%d HCId=%d Coordinator=%d Status=%s}", cp.PId, cp.PId, cp.CId, cp.HCId, cp.Coordinator, cp.Status)
 }
 
 func (cp *CasteProcess) Encode() string {
@@ -87,7 +87,7 @@ func (cp *CasteProcess) StopListen() {
 	}
 	cp.BroadcastListener.Close()
 
-	log.Printf("(P:%d) Stopped listening.", cp.PId)
+	//	log.Printf("(P:%d) Stopped listening.", cp.PId)
 }
 
 func (cp *CasteProcess) CheckCoordinator() {
@@ -128,6 +128,8 @@ func (cp *CasteProcess) StartElection(byContinue bool) {
 func (cp *CasteProcess) BecomeCoordinator() {
 	log.Printf("(P:%d) I am the new coordinator\n", cp.PId)
 	cp.Coordinator = cp.PId
+	cp.HCId = cp.CId
+	cp.Status = "Up"
 	cp.StopListen()
 	time.Sleep(10 * time.Millisecond)
 	cp.Start()
@@ -174,12 +176,16 @@ func (cp *CasteProcess) unicastMsgHandler(n int, b []byte, addr string) []byte {
 	case "AreYouOk?":
 		returnMsg = cp.Msg("ok!")
 	case "IAmCandidate!":
-		returnMsg = cp.Msg("Continue!")
-		cp.CandidateChan <- msg.PId
+		if cp.Candidate == 0 {
+			returnMsg = cp.Msg("Continue!")
+			cp.CandidateChan <- msg.PId
+		} else {
+			returnMsg = cp.Msg("YouLost!")
+		}
 	default:
 		returnMsg = cp.Msg("ok...")
 	}
-	log.Printf("(P:%d) Message received from [P:%d] at %s: %s\n", cp.PId, msg.PId, addr, msg.Text)
+	log.Printf("(P:%d) Unicast message received from [P:%d] at %s: %s\n", cp.PId, msg.PId, addr, msg.Text)
 	return []byte(returnMsg.Encode())
 }
 
@@ -205,7 +211,7 @@ func multicastListen(cp *CasteProcess) {
 	l, err := multicast.NewListener(casteAddress(cp.CId))
 	cp.MulticastListener = l
 	if err == nil {
-		go multicast.Listen(cp.MulticastListener, cp.multicastMsgHandler, cp.StopChan)
+		go multicast.Listen(cp.MulticastListener, cp.multicastMsgHandler, false, cp.StopChan)
 	}
 }
 
@@ -213,15 +219,19 @@ func broadcastListen(cp *CasteProcess) {
 	l, err := multicast.NewListener(broadcastAddress())
 	cp.BroadcastListener = l
 	if err == nil {
-		go multicast.Listen(cp.BroadcastListener, cp.multicastMsgHandler, cp.StopChan)
+		go multicast.Listen(cp.BroadcastListener, cp.multicastMsgHandler, true, cp.StopChan)
 	}
 }
 
-func (cp *CasteProcess) multicastMsgHandler(src *net.UDPAddr, n int, b []byte) {
+func (cp *CasteProcess) multicastMsgHandler(src *net.UDPAddr, n int, b []byte, isBroadcast bool) {
 	var msg CasteMsg
 	msg.Decode(string(b[:n]))
 	if cp.PId != msg.PId {
-		log.Printf("(P:%d) Message received from [P:%d] at %s: %s\n", cp.PId, msg.PId, src.String(), msg.Text)
+		if isBroadcast {
+			log.Printf("(P:%d) Broadcast message received from [P:%d] at %s: %s\n", cp.PId, msg.PId, src.String(), msg.Text)
+		} else {
+			log.Printf("(P:%d) Multicast message received from [P:%d] at %s: %s\n", cp.PId, msg.PId, src.String(), msg.Text)
+		}
 		switch msg.Text {
 		case "IAmCoordinator!":
 			cp.Coordinator = msg.PId

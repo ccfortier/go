@@ -32,7 +32,7 @@ func casteCreate(r *http.Request) {
 	pCaste.Status = "Up"
 	pCaste.StopChan = make(chan bool, 1000)
 	pCaste.CandidateChan = make(chan int)
-	log.Printf("(P:%d) Created\n", pCaste.PId)
+	//log.Printf("(P:%d) Created\n", pCaste.PId)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
