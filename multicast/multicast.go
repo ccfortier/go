@@ -28,6 +28,7 @@ func Listen(conn *net.UDPConn, handler func(*net.UDPAddr, int, []byte), stop cha
 				break
 			}
 			log.Println("ReadFromUDP failed: ", err)
+			break
 		} else {
 			handler(src, numBytes, buffer)
 		}

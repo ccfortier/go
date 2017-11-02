@@ -30,7 +30,7 @@ func casteCreate(r *http.Request) {
 	pCaste.Coordinator, _ = strconv.Atoi(r.URL.Query().Get("Coordinator"))
 	pCaste.SingleIP, _ = strconv.Atoi(r.URL.Query().Get("SingleIP"))
 	pCaste.Status = "Up"
-	pCaste.StopChan = make(chan bool, 1)
+	pCaste.StopChan = make(chan bool, 1000)
 	pCaste.CandidateChan = make(chan int)
 	log.Printf("(P:%d) Created\n", pCaste.PId)
 }

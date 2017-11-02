@@ -26,6 +26,7 @@ type CasteProcess struct {
 	HCId              int
 	Coordinator       int
 	Status            string
+	Candidate         int
 	SingleIP          int
 	StopChan          chan bool
 	CandidateChan     chan int
@@ -41,7 +42,7 @@ func (cp *CasteProcess) Start() (*net.TCPListener, *net.UDPConn, *net.UDPConn) {
 	} else {
 		startAs = "WORKER"
 	}
-	ip := processAddress(cp)
+	ip := processAddress(cp.SingleIP, cp.PId)
 	log.Printf("(P:%d) Started as %s. Waiting for requests at %s...\n", cp.PId, startAs, ip)
 	unicastListen(cp)
 	log.Printf("(P:%d) Joined caste %d. listen multicast at %s...\n", cp.PId, cp.CId, casteAddress(cp.CId))
@@ -63,18 +64,27 @@ func (cp *CasteProcess) Decode(cpEncoded string) {
 	fmt.Sscanf(cpEncoded[:len(cpEncoded)-1], "{%d %d %d %d %s}", cp.PId, cp.CId, cp.HCId, cp.Coordinator, cp.Status)
 }
 
-func (cp *CasteProcess) CasteMsg(msg string) *CasteMsg {
+func (cp *CasteProcess) Msg(msg string) *CasteMsg {
 	return &CasteMsg{cp.PId, cp.CId, msg}
 }
 
 func (cp *CasteProcess) StopListen() {
-	cp.StopChan <- true
+	select {
+	case cp.StopChan <- true:
+	default:
+	}
 	cp.UnicastListener.Close()
 
-	cp.StopChan <- true
+	select {
+	case cp.StopChan <- true:
+	default:
+	}
 	cp.MulticastListener.Close()
 
-	cp.StopChan <- true
+	select {
+	case cp.StopChan <- true:
+	default:
+	}
 	cp.BroadcastListener.Close()
 
 	log.Printf("(P:%d) Stopped listening.", cp.PId)
@@ -85,25 +95,28 @@ func (cp *CasteProcess) CheckCoordinator() {
 		log.Printf("(P:%d) Can't check coordinator. Waiting election!\n", cp.PId)
 	} else {
 		ip := coordinatorAddress(cp)
-		_, err := unicastSendMessage(cp, ip, cp.CasteMsg("AreYouOk?"))
+		_, err := unicastSendMessage(cp, ip, cp.Msg("AreYouOk?"))
 		if err != nil {
 			log.Printf("(P:%d) Coordinator [P:%d] is down!\n", cp.PId, cp.Coordinator)
-			cp.StartElection()
+			cp.StartElection(false)
 		}
 	}
 }
 
-func (cp *CasteProcess) StartElection() {
+func (cp *CasteProcess) StartElection(byContinue bool) {
 	if cp.CId == cp.HCId {
 		cp.BecomeCoordinator()
 	} else {
-		multicastSendMessage(cp, casteAddress(cp.CId), cp.CasteMsg("WaitElection!"))
-		//multicastSendMessage(cp, casteAddress(cp.CId+1), cp.CasteMsg("SomeoneUp?"))
+		if !byContinue {
+			multicastSendMessage(cp, casteAddress(cp.CId), cp.Msg("WaitElection!"))
+		}
+		multicastSendMessage(cp, casteAddress(cp.CId+1), cp.Msg("SomeoneUp?"))
 		cp.Status = "WaitingCandidate"
+		cp.Candidate = 0
 		go func() {
 			select {
-			case candidate := <-cp.CandidateChan:
-				log.Printf("Candidate: [P:%d]", candidate)
+			case <-cp.CandidateChan:
+				cp.Status = "WaitingElection"
 			case <-time.After(time.Millisecond * defaultTimeOut):
 				log.Printf("(P:%d) No candidates in superior castes", cp.PId)
 				cp.BecomeCoordinator()
@@ -118,14 +131,14 @@ func (cp *CasteProcess) BecomeCoordinator() {
 	cp.StopListen()
 	time.Sleep(10 * time.Millisecond)
 	cp.Start()
-	multicastSendMessage(cp, broadcastAddress(), cp.CasteMsg("IAmCoordinator!"))
+	multicastSendMessage(cp, broadcastAddress(), cp.Msg("IAmCoordinator!"))
 }
 
-func processAddress(cp *CasteProcess) string {
-	if cp.SingleIP == 0 {
-		return fmt.Sprintf("%s.%d:%d", defaultNetwork, cp.PId, defaultUnicastPort)
+func processAddress(SingleIP int, PId int) string {
+	if SingleIP == 0 {
+		return fmt.Sprintf("%s.%d:%d", defaultNetwork, PId, defaultUnicastPort)
 	} else {
-		return fmt.Sprintf("%s.%d:%d", defaultNetwork, cp.SingleIP, defaultUnicastPort+cp.PId)
+		return fmt.Sprintf("%s.%d:%d", defaultNetwork, SingleIP, defaultUnicastPort+PId)
 	}
 }
 
@@ -146,7 +159,7 @@ func broadcastAddress() string {
 }
 
 func unicastListen(cp *CasteProcess) {
-	l, err := unicast.NewListener(processAddress(cp))
+	l, err := unicast.NewListener(processAddress(cp.SingleIP, cp.PId))
 	cp.UnicastListener = l
 	if err == nil {
 		go unicast.Listen(cp.UnicastListener, cp.unicastMsgHandler, cp.StopChan)
@@ -159,9 +172,12 @@ func (cp *CasteProcess) unicastMsgHandler(n int, b []byte, addr string) []byte {
 	msg.Decode(string(b[:n]))
 	switch msg.Text {
 	case "AreYouOk?":
-		returnMsg = cp.CasteMsg("ok!")
+		returnMsg = cp.Msg("ok!")
+	case "IAmCandidate!":
+		returnMsg = cp.Msg("Continue!")
+		cp.CandidateChan <- msg.PId
 	default:
-		returnMsg = cp.CasteMsg("ok...")
+		returnMsg = cp.Msg("ok...")
 	}
 	log.Printf("(P:%d) Message received from [P:%d] at %s: %s\n", cp.PId, msg.PId, addr, msg.Text)
 	return []byte(returnMsg.Encode())
@@ -179,13 +195,9 @@ func unicastSendMessage(cp *CasteProcess, addr string, msg *CasteMsg) (*CasteMsg
 		if err != nil {
 			return nil, fmt.Errorf("(P:%d) ReadFromTCP failed to colect response: %s", cp.PId, err)
 		}
-		if string(buffer)[:4] != "STOP" {
-			response.Decode(string(buffer[:n]))
-			log.Printf("(P:%d) Response from process [P:%d]: %s", cp.PId, cp.Coordinator, response.Text)
-			return &response, nil
-		} else {
-			return nil, nil
-		}
+		response.Decode(string(buffer[:n]))
+		log.Printf("(P:%d) Response from process [P:%d]: %s", cp.PId, response.PId, response.Text)
+		return &response, nil
 	}
 }
 
@@ -217,6 +229,16 @@ func (cp *CasteProcess) multicastMsgHandler(src *net.UDPAddr, n int, b []byte) {
 			cp.Status = "Up"
 		case "WaitElection!":
 			cp.Status = "WaitingElection"
+		case "SomeoneUp?":
+			cp.Status = "WaitingElection"
+			response, err := unicastSendMessage(cp, processAddress(cp.SingleIP, msg.PId), cp.Msg("IAmCandidate!"))
+			if err == nil {
+				if response.Text == "Continue!" {
+					cp.StartElection(true)
+				}
+			} else {
+				log.Println("Erro: ", err)
+			}
 		default:
 		}
 	}
