@@ -3,6 +3,8 @@ clear
 echo "building coordinator election daemon..."
 go build  
 echo "<<< third use case >>"
+echo "clear log"
+rm --f msglog
 echo ""
 echo "starting daemons..."
 coordinator-election -admPort=8001 &

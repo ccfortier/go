@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/ccfortier/go/coordinator-election/caste"
@@ -17,10 +17,10 @@ const (
 )
 
 var (
-	pCaste          = caste.CasteProcess{}
-	admPort         *int
-	stopChanel      chan bool
-	unicastListener *net.TCPListener
+	pCaste     = caste.CasteProcess{}
+	admPort    *int
+	stopChanel chan bool
+	f          *os.File
 )
 
 func casteCreate(r *http.Request) {
@@ -32,6 +32,7 @@ func casteCreate(r *http.Request) {
 	pCaste.Status = "Up"
 	pCaste.StopChan = make(chan bool, 1000)
 	pCaste.CandidateChan = make(chan int)
+	pCaste.FLog = f
 	//log.Printf("(P:%d) Created\n", pCaste.PId)
 }
 
@@ -65,6 +66,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	var err error
+	f, err = os.OpenFile("msglog", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Printf("error opening file: %v\n", err)
+	}
+	defer f.Close()
+
 	http.HandleFunc("/", handler)
 	admPort = flag.Int("admPort", 8080, "Defines http adm port.")
 	flag.Parse()

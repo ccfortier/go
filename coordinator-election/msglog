@@ -1,0 +1,11 @@
+2017/11/02 22:51:48 (P:2) Unicast: AreYouOk?
+2017/11/02 22:51:48 (P:8) Unicast: AreYouOk?
+2017/11/02 22:51:48 (P:8) Multicast: WaitElection!
+2017/11/02 22:51:48 (P:8) Multicast: SomeoneUp?
+2017/11/02 22:51:48 (P:3) Unicast: IAmCandidate!
+2017/11/02 22:51:48 (P:5) Unicast: IAmCandidate!
+2017/11/02 22:51:48 (P:6) Unicast: IAmCandidate!
+2017/11/02 22:51:48 (P:2) Unicast: IAmCandidate!
+2017/11/02 22:51:48 (P:4) Unicast: IAmCandidate!
+2017/11/02 22:51:48 (P:5) Multicast: SomeoneUp?
+2017/11/02 22:51:48 (P:5) Broadcast: IAmCoordinator!

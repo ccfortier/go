@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"time"
 
 	"github.com/ccfortier/go/multicast"
@@ -33,6 +34,7 @@ type CasteProcess struct {
 	UnicastListener   *net.TCPListener
 	MulticastListener *net.UDPConn
 	BroadcastListener *net.UDPConn
+	FLog              *os.File
 }
 
 func (cp *CasteProcess) Start() (*net.TCPListener, *net.UDPConn, *net.UDPConn) {
@@ -108,9 +110,9 @@ func (cp *CasteProcess) StartElection(byContinue bool) {
 		cp.BecomeCoordinator()
 	} else {
 		if !byContinue {
-			multicastSendMessage(cp, casteAddress(cp.CId), cp.Msg("WaitElection!"))
+			multicastSendMessage(cp, casteAddress(cp.CId), cp.Msg("WaitElection!"), false)
 		}
-		multicastSendMessage(cp, casteAddress(cp.CId+1), cp.Msg("SomeoneUp?"))
+		multicastSendMessage(cp, casteAddress(cp.CId+1), cp.Msg("SomeoneUp?"), false)
 		cp.Status = "WaitingCandidate"
 		cp.Candidate = 0
 		go func() {
@@ -133,7 +135,7 @@ func (cp *CasteProcess) BecomeCoordinator() {
 	cp.StopListen()
 	time.Sleep(10 * time.Millisecond)
 	cp.Start()
-	multicastSendMessage(cp, broadcastAddress(), cp.Msg("IAmCoordinator!"))
+	multicastSendMessage(cp, broadcastAddress(), cp.Msg("IAmCoordinator!"), true)
 }
 
 func processAddress(SingleIP int, PId int) string {
@@ -191,6 +193,11 @@ func (cp *CasteProcess) unicastMsgHandler(n int, b []byte, addr string) []byte {
 
 func unicastSendMessage(cp *CasteProcess, addr string, msg *CasteMsg) (*CasteMsg, error) {
 	var response CasteMsg
+
+	log.SetOutput(cp.FLog)
+	log.Printf("(P:%d) Unicast: %s\n", msg.PId, msg.Text)
+	log.SetOutput(os.Stderr)
+
 	conn, err := unicast.NewSender(addr)
 	if err != nil {
 		return nil, err
@@ -254,7 +261,14 @@ func (cp *CasteProcess) multicastMsgHandler(src *net.UDPAddr, n int, b []byte, i
 	}
 }
 
-func multicastSendMessage(cp *CasteProcess, addr string, msg *CasteMsg) error {
+func multicastSendMessage(cp *CasteProcess, addr string, msg *CasteMsg, isBroadcast bool) error {
+	log.SetOutput(cp.FLog)
+	if isBroadcast {
+		log.Printf("(P:%d) Broadcast: %s", msg.PId, msg.Text)
+	} else {
+		log.Printf("(P:%d) Multicast: %s", msg.PId, msg.Text)
+	}
+	log.SetOutput(os.Stderr)
 	conn, err := multicast.NewSender(addr)
 	if err != nil {
 		return err
