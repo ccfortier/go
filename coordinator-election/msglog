@@ -1,11 +1,11 @@
-2017/11/02 22:51:48 (P:2) Unicast: AreYouOk?
-2017/11/02 22:51:48 (P:8) Unicast: AreYouOk?
-2017/11/02 22:51:48 (P:8) Multicast: WaitElection!
-2017/11/02 22:51:48 (P:8) Multicast: SomeoneUp?
-2017/11/02 22:51:48 (P:3) Unicast: IAmCandidate!
-2017/11/02 22:51:48 (P:5) Unicast: IAmCandidate!
-2017/11/02 22:51:48 (P:6) Unicast: IAmCandidate!
-2017/11/02 22:51:48 (P:2) Unicast: IAmCandidate!
-2017/11/02 22:51:48 (P:4) Unicast: IAmCandidate!
-2017/11/02 22:51:48 (P:5) Multicast: SomeoneUp?
-2017/11/02 22:51:48 (P:5) Broadcast: IAmCoordinator!
+2017/11/03 12:27:46 (P:2-2) Unicast: AreYouOk? to [P:1-3]
+2017/11/03 12:27:46 (P:7-1) Unicast: AreYouOk? to [P:1-3]
+2017/11/03 12:27:46 (P:7-1) Multicast: WaitElection! to caste 1
+2017/11/03 12:27:46 (P:7-1) Multicast: SomeoneUp? to caste 2
+2017/11/03 12:27:46 (P:5-2) Unicast: IAmCandidate! to [P:7-1]
+2017/11/03 12:27:46 (P:3-2) Unicast: IAmCandidate! to [P:7-1]
+2017/11/03 12:27:46 (P:2-2) Unicast: IAmCandidate! to [P:7-1]
+2017/11/03 12:27:46 (P:4-2) Unicast: IAmCandidate! to [P:7-1]
+2017/11/03 12:27:46 (P:6-2) Unicast: IAmCandidate! to [P:7-1]
+2017/11/03 12:27:46 (P:3-2) Multicast: SomeoneUp? to caste 3
+2017/11/03 12:27:46 (P:3-2) Broadcast: IAmCoordinator!

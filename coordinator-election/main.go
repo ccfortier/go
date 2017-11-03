@@ -19,6 +19,7 @@ const (
 var (
 	pCaste     = caste.CasteProcess{}
 	admPort    *int
+	lStart     *bool
 	stopChanel chan bool
 	f          *os.File
 )
@@ -33,7 +34,6 @@ func casteCreate(r *http.Request) {
 	pCaste.StopChan = make(chan bool, 1000)
 	pCaste.CandidateChan = make(chan int)
 	pCaste.FLog = f
-	//log.Printf("(P:%d) Created\n", pCaste.PId)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -54,9 +54,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			pCaste.StopListen()
 		case "casteCheckCoordinator":
 			pCaste.CheckCoordinator()
+		case "sStop":
+			os.Exit(0)
 		case "stop":
 			if pCaste.PId > 0 {
-				log.Fatalf("(P:%d) Stopped!\n", pCaste.PId)
+				log.Fatalf("(P:%d-%d) Bye...\n", pCaste.PId, pCaste.CId)
 			}
 			log.Fatalf("<C.E.Daemon> Stopped on port %d!\n", *admPort)
 		default:
@@ -75,7 +77,10 @@ func main() {
 
 	http.HandleFunc("/", handler)
 	admPort = flag.Int("admPort", 8080, "Defines http adm port.")
+	lStart = flag.Bool("lStart", false, "Show log on start.")
 	flag.Parse()
-	log.Printf("<C.E.Daemon> waiting commands on port %d...\n", *admPort)
+	if *lStart {
+		log.Printf("<C.E.Daemon> waiting commands on port %d...\n", *admPort)
+	}
 	http.ListenAndServe(fmt.Sprintf(":%d", *admPort), nil)
 }

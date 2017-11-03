@@ -7,11 +7,15 @@ echo "clear log"
 rm --f msglog
 echo ""
 echo "starting daemons..."
-coordinator-election -admPort=8001 &
-coordinator-election -admPort=8002 &
-coordinator-election -admPort=8003 &
-coordinator-election -admPort=8004 &
-coordinator-election -admPort=8005 &
+#coordinator-election -admPort=8001 &
+#coordinator-election -admPort=8002 &
+#coordinator-election -admPort=8003 &
+#coordinator-election -admPort=8004 &
+#coordinator-election -admPort=8005 &
+for i in {8001..8005}
+do
+   coordinator-election -admPort=$i &
+done
 sleep 0.5
 echo ""
 echo "starting coordinator..."
