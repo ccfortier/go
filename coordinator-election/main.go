@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -22,6 +23,7 @@ var (
 	lStart     *bool
 	stopChanel chan bool
 	f          *os.File
+	quietMode  *bool
 )
 
 func casteCreate(r *http.Request) {
@@ -34,6 +36,7 @@ func casteCreate(r *http.Request) {
 	pCaste.StopChan = make(chan bool, 1000)
 	pCaste.CandidateChan = make(chan int)
 	pCaste.FLog = f
+	pCaste.QuietMode = quietMode
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -78,9 +81,14 @@ func main() {
 	http.HandleFunc("/", handler)
 	admPort = flag.Int("admPort", 8080, "Defines http adm port.")
 	lStart = flag.Bool("lStart", false, "Show log on start.")
+	quietMode = flag.Bool("quiet", true, "Executes on quite mode.")
 	flag.Parse()
 	if *lStart {
 		log.Printf("<C.E.Daemon> waiting commands on port %d...\n", *admPort)
+	}
+	if *quietMode {
+		//log.SetFlags(0)
+		log.SetOutput(ioutil.Discard)
 	}
 	http.ListenAndServe(fmt.Sprintf(":%d", *admPort), nil)
 }
