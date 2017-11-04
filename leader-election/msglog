@@ -1,0 +1,8 @@
+2017/11/04 15:13:09 (P:2-1) Unicast: AreYouOk? to [P:1-2]
+2017/11/04 15:13:09 (P:2-1) Unicast: AreYouOk? to [P:1-2]
+2017/11/04 15:13:09 (P:2-1) Multicast: WaitElection! to caste 1
+2017/11/04 15:13:09 (P:2-1) Multicast: SomeoneUp? to caste 2
+2017/11/04 15:13:10 (P:2-1) Broadcast: IAmLeader!
+2017/11/04 15:13:10 (P:3-1) Unicast: AreYouOk? to [P:2-1]
+2017/11/04 15:13:10 (P:3-1) Unicast: AreYouOk? to [P:2-1]
+2017/11/04 15:13:10 (P:3-1) Broadcast: IAmLeader!
