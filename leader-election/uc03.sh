@@ -9,7 +9,7 @@ echo ""
 echo "starting daemons..."
 for i in {10001..11500}
 do
-   coordinator-election -admPort=$i &
+   coordinator-election -admPort=$i -quiet &
 done
 sleep 0.1
 echo ""

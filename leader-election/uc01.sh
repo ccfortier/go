@@ -9,7 +9,7 @@ echo ""
 echo "starting daemons..."
 for i in {10001..10008}
 do
-   ./leader-election -admPort=$i -quiet=false &
+   ./leader-election -admPort=$i &
 done
 sleep 0.5
 echo ""
@@ -42,7 +42,7 @@ do
 done
 echo ""
 echo "stopping daemons"
-for i in {10002..10008}
+for i in {10003..10008}
 do
    curl -s "http://localhost:$i?cmd=sStop"
 done

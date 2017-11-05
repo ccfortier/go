@@ -85,15 +85,15 @@ func broadcastListen(cp *CasteProcess) {
 	}
 }
 
-func multicastSendMessage(cp *CasteProcess, tPID int, msg *CasteMsg, isBroadcast bool) error {
+func multicastSendMessage(cp *CasteProcess, tCID int, msg *CasteMsg, isBroadcast bool) error {
 	var addr string
 	log.SetOutput(cp.FLog)
 	if isBroadcast {
 		addr = broadcastAddress()
 		log.Printf("(P:%d-%d) Broadcast: %s", cp.PId, cp.CId, msg.Text)
 	} else {
-		addr = casteAddress(tPID)
-		log.Printf("(P:%d-%d) Multicast: %s to caste %d", cp.PId, cp.CId, msg.Text, tPID)
+		addr = casteAddress(tCID)
+		log.Printf("(P:%d-%d) Multicast: %s to caste %d", cp.PId, cp.CId, msg.Text, tCID)
 	}
 	if *cp.QuietMode {
 		log.SetOutput(ioutil.Discard)

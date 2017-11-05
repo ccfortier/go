@@ -87,19 +87,19 @@ func (cp *CasteProcess) CheckLeader() {
 		_, err := unicastSendMessage(cp, cp.Leader, cp.HCId, cp.Msg("AreYouOk?"))
 		if err != nil {
 			log.Printf("(P:%d-%d) Leader [P:%d-%d] is down!\n", cp.PId, cp.CId, cp.Leader, cp.HCId)
-			cp.StartElection(false)
+			cp.StartElection(false, cp.CId)
 		}
 	}()
 }
 
-func (cp *CasteProcess) StartElection(byContinue bool) {
+func (cp *CasteProcess) StartElection(byContinue bool, caste int) {
 	if cp.CId == cp.HCId {
 		cp.BecomeLeader()
 	} else {
 		if !byContinue {
-			multicastSendMessage(cp, cp.CId, cp.Msg("WaitElection!"), false)
+			multicastSendMessage(cp, caste, cp.Msg("WaitElection!"), false)
 		}
-		multicastSendMessage(cp, cp.CId+1, cp.Msg("SomeoneUp?"), false)
+		multicastSendMessage(cp, caste+1, cp.Msg("SomeoneUp?"), false)
 		cp.Status = "WaitingCandidate"
 		cp.Candidate = 0
 		go func() {
@@ -107,8 +107,12 @@ func (cp *CasteProcess) StartElection(byContinue bool) {
 			case <-cp.CandidateChan:
 				cp.Status = "WaitingElection"
 			case <-time.After(time.Millisecond * defaultTimeOut):
-				log.Printf("(P:%d-%d) No candidates in superior castes", cp.PId, cp.CId)
-				cp.BecomeLeader()
+				if caste == cp.HCId-1 {
+					log.Printf("(P:%d-%d) No candidates in superior castes", cp.PId, cp.CId)
+					cp.BecomeLeader()
+				} else {
+					cp.StartElection(true, caste+1)
+				}
 			}
 		}()
 	}
@@ -167,7 +171,7 @@ func (cp *CasteProcess) multicastMsgHandler(src *net.UDPAddr, n int, b []byte, i
 			response, err := unicastSendMessage(cp, msg.PId, msg.CId, cp.Msg("IAmCandidate!"))
 			if err == nil {
 				if response.Text == "Continue!" {
-					cp.StartElection(true)
+					cp.StartElection(true, cp.CId)
 				}
 			} else {
 				log.Println("Erro: ", err)

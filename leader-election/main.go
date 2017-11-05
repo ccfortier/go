@@ -81,7 +81,7 @@ func main() {
 	http.HandleFunc("/", handler)
 	admPort = flag.Int("admPort", 8080, "Defines http adm port.")
 	lStart = flag.Bool("lStart", false, "Show log on start.")
-	quietMode = flag.Bool("quiet", true, "Executes on quite mode.")
+	quietMode = flag.Bool("quiet", false, "Executes on quite mode.")
 	flag.Parse()
 	if *lStart {
 		log.Printf("<C.E.Daemon> waiting commands on port %d...\n", *admPort)
