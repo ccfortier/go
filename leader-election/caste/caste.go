@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -33,6 +34,7 @@ type CasteProcess struct {
 	BroadcastListener *net.UDPConn
 	FLog              *os.File
 	QuietMode         *bool
+	mux               sync.Mutex
 }
 
 func (cp *CasteProcess) Start() (*net.TCPListener, *net.UDPConn, *net.UDPConn) {
@@ -101,7 +103,9 @@ func (cp *CasteProcess) StartElection(byContinue bool, caste int) {
 		}
 		multicastSendMessage(cp, caste+1, cp.Msg("SomeoneUp?"), false)
 		cp.Status = "WaitingCandidate"
+		cp.mux.Lock()
 		cp.Candidate = 0
+		cp.mux.Unlock()
 		go func() {
 			select {
 			case <-cp.CandidateChan:
@@ -137,11 +141,15 @@ func (cp *CasteProcess) unicastMsgHandler(n int, b []byte, addr string) []byte {
 	case "AreYouOk?":
 		returnMsg = cp.Msg("ok!")
 	case "IAmCandidate!":
+		cp.mux.Lock()
 		if cp.Candidate == 0 {
 			returnMsg = cp.Msg("Continue!")
+			cp.Candidate = msg.PId
+			cp.mux.Unlock()
 			cp.CandidateChan <- msg.PId
 		} else {
 			returnMsg = cp.Msg("YouLost!")
+			cp.mux.Unlock()
 		}
 	default:
 		returnMsg = cp.Msg("ok...")
