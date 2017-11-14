@@ -1,6 +1,6 @@
 #!/bin/bash  
 clear
-echo "building coordinator election daemon..."
+echo "building leader election daemon..."
 go build  
 echo "<<< second use case >>"
 echo "clear log"
@@ -13,7 +13,7 @@ do
 done
 sleep 0.1
 echo ""
-echo "starting coordinator at caste 3..."
+echo "starting leader at caste 3..."
 curl "http://localhost:10001?cmd=caste&PId=1&Leader=1&CId=3&HCId=3&SingleIP=2"
 echo ""
 echo "starting workers at caste 3..."

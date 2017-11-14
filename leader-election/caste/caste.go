@@ -22,7 +22,7 @@ const (
 type CasteProcess struct {
 	PId               int
 	CId               int
-	HCId              int
+	LCId              int
 	Leader            int
 	Status            string
 	Candidate         int
@@ -45,15 +45,15 @@ func (cp *CasteProcess) Start() (*net.TCPListener, *net.UDPConn, *net.UDPConn) {
 }
 
 func (cp *CasteProcess) Dump() {
-	log.Printf("(P:%d-%d) {PId=%d CId=%d HCId=%d Leader=%d Status=%s}", cp.PId, cp.CId, cp.PId, cp.CId, cp.HCId, cp.Leader, cp.Status)
+	log.Printf("(P:%d-%d) {PId=%d CId=%d HCId=%d Leader=%d Status=%s}", cp.PId, cp.CId, cp.PId, cp.CId, cp.LCId, cp.Leader, cp.Status)
 }
 
 func (cp *CasteProcess) Encode() string {
-	return fmt.Sprintf("{%d %d %d %d %s}", cp.PId, cp.CId, cp.HCId, cp.Leader, cp.Status)
+	return fmt.Sprintf("{%d %d %d %d %s}", cp.PId, cp.CId, cp.LCId, cp.Leader, cp.Status)
 }
 
 func (cp *CasteProcess) Decode(cpEncoded string) {
-	fmt.Sscanf(cpEncoded[:len(cpEncoded)-1], "{%d %d %d %d %s}", cp.PId, cp.CId, cp.HCId, cp.Leader, cp.Status)
+	fmt.Sscanf(cpEncoded[:len(cpEncoded)-1], "{%d %d %d %d %s}", cp.PId, cp.CId, cp.LCId, cp.Leader, cp.Status)
 }
 
 func (cp *CasteProcess) Msg(msg string) *CasteMsg {
@@ -86,19 +86,19 @@ func (cp *CasteProcess) CheckLeader() {
 			log.Printf("(P:%d-%d) Waiting election! Will check in %d milliseconds\n", cp.PId, cp.CId, defaultTimeOut)
 			time.Sleep(defaultTimeOut * time.Millisecond)
 		}
-		_, err := unicastSendMessage(cp, cp.Leader, cp.HCId, cp.Msg("AreYouOk?"))
+		_, err := unicastSendMessage(cp, cp.Leader, cp.LCId, cp.Msg("AreYouOk?"))
 		if err != nil {
-			log.Printf("(P:%d-%d) Leader [P:%d-%d] is down!\n", cp.PId, cp.CId, cp.Leader, cp.HCId)
-			cp.StartElection(false, cp.CId)
+			log.Printf("(P:%d-%d) Leader [P:%d-%d] is down!\n", cp.PId, cp.CId, cp.Leader, cp.LCId)
+			cp.DoElection(true, cp.CId)
 		}
 	}()
 }
 
-func (cp *CasteProcess) StartElection(byContinue bool, caste int) {
-	if cp.CId == cp.HCId {
+func (cp *CasteProcess) DoElection(starting bool, caste int) {
+	if cp.CId == cp.LCId {
 		cp.BecomeLeader()
 	} else {
-		if !byContinue {
+		if starting {
 			multicastSendMessage(cp, caste, cp.Msg("WaitElection!"), false)
 		}
 		multicastSendMessage(cp, caste+1, cp.Msg("SomeoneUp?"), false)
@@ -111,11 +111,11 @@ func (cp *CasteProcess) StartElection(byContinue bool, caste int) {
 			case <-cp.CandidateChan:
 				cp.Status = "WaitingElection"
 			case <-time.After(time.Millisecond * defaultTimeOut):
-				if caste == cp.HCId-1 {
+				if caste == cp.LCId-1 {
 					log.Printf("(P:%d-%d) No candidates in superior castes", cp.PId, cp.CId)
 					cp.BecomeLeader()
 				} else {
-					cp.StartElection(true, caste+1)
+					cp.DoElection(false, caste+1)
 				}
 			}
 		}()
@@ -125,12 +125,12 @@ func (cp *CasteProcess) StartElection(byContinue bool, caste int) {
 func (cp *CasteProcess) BecomeLeader() {
 	log.Printf("(P:%d-%d) I am the new leader\n", cp.PId, cp.CId)
 	cp.Leader = cp.PId
-	cp.HCId = cp.CId
+	cp.LCId = cp.CId
 	cp.Status = "Up"
 	cp.StopListen()
 	time.Sleep(10 * time.Millisecond)
 	cp.Start()
-	multicastSendMessage(cp, 0, cp.Msg("IAmLeader!"), true)
+	multicastSendMessage(cp, 0, cp.Msg("IAmTheLeader!"), true)
 }
 
 func (cp *CasteProcess) unicastMsgHandler(n int, b []byte, addr string) []byte {
@@ -140,7 +140,7 @@ func (cp *CasteProcess) unicastMsgHandler(n int, b []byte, addr string) []byte {
 	switch msg.Text {
 	case "AreYouOk?":
 		returnMsg = cp.Msg("ok!")
-	case "IAmCandidate!":
+	case "IAmACandidate!":
 		cp.mux.Lock()
 		if cp.Candidate == 0 {
 			returnMsg = cp.Msg("Continue!")
@@ -168,18 +168,18 @@ func (cp *CasteProcess) multicastMsgHandler(src *net.UDPAddr, n int, b []byte, i
 			log.Printf("(P:%d-%d) Multicast message received from [P:%d-%d] at %s: %s\n", cp.PId, cp.CId, msg.PId, msg.CId, src.String(), msg.Text)
 		}
 		switch msg.Text {
-		case "IAmLeader!":
+		case "IAmTheLeader!":
 			cp.Leader = msg.PId
-			cp.HCId = msg.CId
+			cp.LCId = msg.CId
 			cp.Status = "Up"
 		case "WaitElection!":
 			cp.Status = "WaitingElection"
 		case "SomeoneUp?":
 			cp.Status = "WaitingElection"
-			response, err := unicastSendMessage(cp, msg.PId, msg.CId, cp.Msg("IAmCandidate!"))
+			response, err := unicastSendMessage(cp, msg.PId, msg.CId, cp.Msg("IAmACandidate!"))
 			if err == nil {
 				if response.Text == "Continue!" {
-					cp.StartElection(true, cp.CId)
+					cp.DoElection(false, cp.CId)
 				}
 			} else {
 				log.Println("Erro: ", err)

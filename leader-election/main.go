@@ -29,7 +29,7 @@ var (
 func casteCreate(r *http.Request) {
 	pCaste.PId, _ = strconv.Atoi(r.URL.Query().Get("PId"))
 	pCaste.CId, _ = strconv.Atoi(r.URL.Query().Get("CId"))
-	pCaste.HCId, _ = strconv.Atoi(r.URL.Query().Get("HCId"))
+	pCaste.LCId, _ = strconv.Atoi(r.URL.Query().Get("HCId"))
 	pCaste.Leader, _ = strconv.Atoi(r.URL.Query().Get("Leader"))
 	pCaste.SingleIP, _ = strconv.Atoi(r.URL.Query().Get("SingleIP"))
 	pCaste.Status = "Up"
